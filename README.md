@@ -4,14 +4,21 @@ local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local HttpService = game:GetService("HttpService")
 
 local player = Players.LocalPlayer
-local isMobile = UserInputService:GetLastInputType() == Enum.UserInputType.Touch
+
+-- Detectar se é mobile
+local isMobile = true
+pcall(function()
+	isMobile = UserInputService:GetLastInputType() == Enum.UserInputType.Touch
+end)
 
 if player.PlayerGui:FindFirstChild("StoryGUI") then
 	player.PlayerGui:FindFirstChild("StoryGUI"):Destroy()
 end
 
+-- Sistema de Salvamento
 local SaveSystem = {
 	FileName = "WaveDuelsConfig.json",
 	DefaultConfig = {
@@ -26,14 +33,13 @@ local SaveSystem = {
 		MeleeAimbotEnabled = false,
 		AntiRagdollEnabled = false,
 		AutoStealEnabled = false,
-		GUISize = isMobile and "small" or "normal",
 	}
 }
 
 local function loadConfig()
 	local success, config = pcall(function()
 		local file = readfile(SaveSystem.FileName)
-		return game:GetService("HttpService"):JSONDecode(file)
+		return HttpService:JSONDecode(file)
 	end)
 	if success and config then
 		return config
@@ -44,27 +50,21 @@ end
 
 local function saveConfig(config)
 	pcall(function()
-		local json = game:GetService("HttpService"):JSONEncode(config)
+		local json = HttpService:JSONEncode(config)
 		writefile(SaveSystem.FileName, json)
 	end)
 end
 
 local Config = loadConfig()
 
+-- Criar GUI Principal
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "StoryGUI"
 ScreenGui.Parent = player.PlayerGui
 ScreenGui.ResetOnSpawn = false
 ScreenGui.SafeAreaCompatible = true
 
-local IsStealing = false
-local StealProgress = 0
-
--- Ajustar tamanho da GUI baseado no dispositivo
-local guiScale = isMobile and 0.7 or 1
-local mainFrameSize = isMobile and UDim2.new(0, 250, 0, 380) or UDim2.new(0, 350, 0, 500)
-local mainFramePos = isMobile and UDim2.new(0.5, -125, 0.5, -190) or UDim2.new(0.5, -175, 0.5, -250)
-
+-- Progress Bar para Steal
 local progressBarBg = Instance.new("Frame")
 progressBarBg.Name = "ProgressBarBg"
 progressBarBg.Size = UDim2.new(0.4, 0, 0, 12)
@@ -91,16 +91,21 @@ progressLabel.Font = Enum.Font.GothamBold
 progressLabel.TextSize = 10
 progressLabel.Parent = progressBarFill
 
+local IsStealing = false
+local StealProgress = 0
+
+-- Tamanho da GUI para Mobile
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = mainFrameSize
-MainFrame.Position = mainFramePos
+MainFrame.Size = UDim2.new(0, 200, 0, 280)
+MainFrame.Position = UDim2.new(0.5, -100, 0.5, -140)
 MainFrame.BackgroundColor3 = Color3.fromRGB(8, 20, 50)
 MainFrame.BackgroundTransparency = 0.1
 MainFrame.Parent = ScreenGui
 MainFrame.Active = true
 MainFrame.Visible = false
+MainFrame.BorderSizePixel = 0
 
-Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 20)
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 15)
 
 local Stroke = Instance.new("UIStroke", MainFrame)
 Stroke.Color = Color3.fromRGB(0, 140, 255)
@@ -110,59 +115,65 @@ Stroke.Thickness = 2
 local UIScale = Instance.new("UIScale", MainFrame)
 UIScale.Scale = 0
 
-local function openGui()
-	MainFrame.Visible = true
-	TweenService:Create(UIScale, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = 1}):Play()
-	TweenService:Create(MainFrame, TweenInfo.new(0.25), {BackgroundTransparency = 0.08}):Play()
-end
-
-local function closeGui()
-	local tween = TweenService:Create(UIScale, TweenInfo.new(0.25, Enum.EasingStyle.Quad), {Scale = 0})
-	tween:Play()
-	tween.Completed:Wait()
-	MainFrame.Visible = false
-end
-
+-- Título
 local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, 0, 0, 45)
+Title.Size = UDim2.new(1, 0, 0, 35)
 Title.BackgroundTransparency = 1
 Title.Text = "WAVE DUELS"
-Title.TextSize = isMobile and 16 or 22
+Title.TextSize = 14
 Title.Font = Enum.Font.GothamBold
 Title.TextColor3 = Color3.new(1, 1, 1)
 Title.Parent = MainFrame
 
-local Underline = Instance.new("Frame")
-Underline.Size = UDim2.new(0.5, 0, 0, 2)
-Underline.Position = UDim2.new(0.25, 0, 1, 0)
-Underline.BackgroundColor3 = Color3.fromRGB(0, 140, 255)
-Underline.Parent = Title
-
-local UnderlineStroke = Instance.new("UIStroke", Underline)
-UnderlineStroke.Color = Color3.fromRGB(0, 140, 255)
-UnderlineStroke.Transparency = 0.5
-UnderlineStroke.Thickness = 1
-
+-- Botão Configurações
 local GearButton = Instance.new("TextButton")
-GearButton.Size = UDim2.new(0, 30, 0, 30)
-GearButton.Position = UDim2.new(1, -40, 0, 7)
+GearButton.Size = UDim2.new(0, 25, 0, 25)
+GearButton.Position = UDim2.new(1, -30, 0, 5)
 GearButton.BackgroundTransparency = 1
 GearButton.Text = "⚙️"
 GearButton.Font = Enum.Font.SourceSans
-GearButton.TextSize = 24
+GearButton.TextSize = 18
 GearButton.TextColor3 = Color3.new(1, 1, 1)
 GearButton.Parent = MainFrame
 
+-- Container para botões
+local Container = Instance.new("Frame")
+Container.Size = UDim2.new(1, -10, 1, -50)
+Container.Position = UDim2.new(0, 5, 0, 40)
+Container.BackgroundTransparency = 1
+Container.Parent = MainFrame
+
+local ScrollFrame = Instance.new("ScrollingFrame")
+ScrollFrame.Size = UDim2.new(1, 0, 1, 0)
+ScrollFrame.BackgroundTransparency = 1
+ScrollFrame.ScrollBarThickness = 2
+ScrollFrame.ScrollBarImageColor3 = Color3.fromRGB(0, 140, 255)
+ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 1)
+ScrollFrame.Parent = Container
+
+local GridLayout = Instance.new("UIGridLayout")
+GridLayout.Parent = ScrollFrame
+GridLayout.CellSize = UDim2.new(0.48, 0, 0, 35)
+GridLayout.CellPadding = UDim2.new(0.04, 0, 0.1, 0)
+GridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+
+ScrollFrame.ChildAdded:Connect(function()
+	local size = GridLayout.AbsoluteContentSize
+	ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, size.Y)
+end)
+
+-- Frame de Configurações
 local SettingsFrame = Instance.new("Frame")
-SettingsFrame.Size = isMobile and UDim2.new(0, 250, 0, 400) or UDim2.new(0, 350, 0, 520)
-SettingsFrame.Position = isMobile and UDim2.new(0.5, 130, 0.5, -200) or UDim2.new(0.5, 200, 0.5, -260)
+SettingsFrame.Size = UDim2.new(0, 220, 0, 350)
+SettingsFrame.Position = UDim2.new(0.5, 120, 0.5, -175)
 SettingsFrame.BackgroundColor3 = Color3.fromRGB(8, 20, 50)
 SettingsFrame.BackgroundTransparency = 0.1
 SettingsFrame.Parent = ScreenGui
 SettingsFrame.Active = true
 SettingsFrame.Visible = false
+SettingsFrame.BorderSizePixel = 0
 
-Instance.new("UICorner", SettingsFrame).CornerRadius = UDim.new(0, 20)
+Instance.new("UICorner", SettingsFrame).CornerRadius = UDim.new(0, 15)
 
 local SettingsStroke = Instance.new("UIStroke", SettingsFrame)
 SettingsStroke.Color = Color3.fromRGB(0, 140, 255)
@@ -172,58 +183,120 @@ SettingsStroke.Thickness = 2
 local SettingsUIScale = Instance.new("UIScale", SettingsFrame)
 SettingsUIScale.Scale = 0
 
-local function openSettingsGui()
-	SettingsFrame.Visible = true
-	TweenService:Create(SettingsUIScale, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = 1}):Play()
-	TweenService:Create(SettingsFrame, TweenInfo.new(0.25), {BackgroundTransparency = 0.08}):Play()
-end
-
-local function closeSettingsGui()
-	local tween = TweenService:Create(SettingsUIScale, TweenInfo.new(0.25, Enum.EasingStyle.Quad), {Scale = 0})
-	tween:Play()
-	tween.Completed:Wait()
-	SettingsFrame.Visible = false
-end
-
+-- Título Configurações
 local SettingsTitle = Instance.new("TextLabel")
-SettingsTitle.Size = UDim2.new(1, 0, 0, 40)
+SettingsTitle.Size = UDim2.new(1, 0, 0, 30)
 SettingsTitle.BackgroundTransparency = 1
-SettingsTitle.Text = "⚡ SPEED"
-SettingsTitle.TextSize = isMobile and 14 or 22
+SettingsTitle.Text = "⚡ VELOCIDADE"
+SettingsTitle.TextSize = 12
 SettingsTitle.Font = Enum.Font.GothamBold
 SettingsTitle.TextColor3 = Color3.new(1, 1, 1)
 SettingsTitle.Parent = SettingsFrame
 
-local SettingsUnderline = Instance.new("Frame")
-SettingsUnderline.Size = UDim2.new(0.5, 0, 0, 2)
-SettingsUnderline.Position = UDim2.new(0.25, 0, 1, 0)
-SettingsUnderline.BackgroundColor3 = Color3.fromRGB(0, 140, 255)
-SettingsUnderline.Parent = SettingsTitle
+-- ScrollFrame para inputs
+local SettingsScroll = Instance.new("ScrollingFrame")
+SettingsScroll.Size = UDim2.new(1, -20, 1, -100)
+SettingsScroll.Position = UDim2.new(0, 10, 0, 40)
+SettingsScroll.BackgroundTransparency = 1
+SettingsScroll.ScrollBarThickness = 2
+SettingsScroll.ScrollBarImageColor3 = Color3.fromRGB(0, 140, 255)
+SettingsScroll.Parent = SettingsFrame
 
-local SettingsUnderlineStroke = Instance.new("UIStroke", SettingsUnderline)
-SettingsUnderlineStroke.Color = Color3.fromRGB(0, 140, 255)
-SettingsUnderlineStroke.Transparency = 0.5
-SettingsUnderlineStroke.Thickness = 1
+local function createSpeedInput(y, labelText, defaultValue, configKey)
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(1, 0, 0, 12)
+	label.Position = UDim2.new(0, 0, 0, y)
+	label.BackgroundTransparency = 1
+	label.Text = labelText
+	label.TextColor3 = Color3.fromRGB(0, 140, 255)
+	label.TextSize = 9
+	label.Font = Enum.Font.GothamBold
+	label.TextXAlignment = Enum.TextXAlignment.Left
+	label.Parent = SettingsScroll
+	
+	local box = Instance.new("TextBox")
+	box.Size = UDim2.new(1, -10, 0, 20)
+	box.Position = UDim2.new(0, 5, 0, y + 14)
+	box.BackgroundColor3 = Color3.fromRGB(20, 25, 35)
+	box.Text = tostring(defaultValue)
+	box.TextColor3 = Color3.fromRGB(255, 255, 255)
+	box.Font = Enum.Font.Gotham
+	box.TextSize = 10
+	box.Parent = SettingsScroll
+	Instance.new("UICorner", box).CornerRadius = UDim.new(0, 4)
+	
+	local boxStroke = Instance.new("UIStroke", box)
+	boxStroke.Color = Color3.fromRGB(0, 140, 255)
+	boxStroke.Transparency = 0.6
+	boxStroke.Thickness = 1
+	
+	box.FocusLost:Connect(function()
+		local val = tonumber(box.Text)
+		if val and val > 0 then
+			val = math.clamp(val, 1, 250)
+			Config[configKey] = val
+			box.Text = tostring(val)
+			saveConfig(Config)
+		else
+			box.Text = tostring(Config[configKey])
+		end
+	end)
+	
+	return box
+end
 
--- BOTÃO SALVAR CONFIGURAÇÃO
+local speedBox = createSpeedInput(0, "🚀 Walk Speed", Config.Speed, "Speed")
+local stealBox = createSpeedInput(40, "👻 Steal Speed", Config.StealSpeed, "StealSpeed")
+local jumpBox = createSpeedInput(80, "⬆️ Jump Power", Config.Jump, "Jump")
+local rangeBox = createSpeedInput(120, "🎯 Steal Range", Config.AutoStealRange, "AutoStealRange")
+
+SettingsScroll.CanvasSize = UDim2.new(0, 0, 0, 200)
+
+-- Botão Salvar Configuração
 local SaveButton = Instance.new("TextButton")
-SaveButton.Size = UDim2.new(1, -30, 0, 35)
-SaveButton.Position = UDim2.new(0, 15, 1, -50)
+SaveButton.Size = UDim2.new(1, -20, 0, 28)
+SaveButton.Position = UDim2.new(0, 10, 1, -38)
 SaveButton.BackgroundColor3 = Color3.fromRGB(0, 140, 255)
 SaveButton.TextColor3 = Color3.new(1, 1, 1)
-SaveButton.Text = "💾 SALVAR CONFIG"
+SaveButton.Text = "💾 SALVAR"
 SaveButton.Font = Enum.Font.GothamBold
-SaveButton.TextSize = isMobile and 11 or 14
+SaveButton.TextSize = 10
 SaveButton.Parent = SettingsFrame
-Instance.new("UICorner", SaveButton).CornerRadius = UDim.new(0, 8)
+Instance.new("UICorner", SaveButton).CornerRadius = UDim.new(0, 6)
 
 SaveButton.MouseButton1Click:Connect(function()
 	saveConfig(Config)
 	SaveButton.Text = "✅ SALVO!"
 	task.wait(1.5)
-	SaveButton.Text = "💾 SALVAR CONFIG"
+	SaveButton.Text = "💾 SALVAR"
 end)
 
+-- Funções de abrir/fechar GUI
+local function openGui()
+	MainFrame.Visible = true
+	TweenService:Create(UIScale, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = 1}):Play()
+end
+
+local function closeGui()
+	local tween = TweenService:Create(UIScale, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {Scale = 0})
+	tween:Play()
+	tween.Completed:Wait()
+	MainFrame.Visible = false
+end
+
+local function openSettings()
+	SettingsFrame.Visible = true
+	TweenService:Create(SettingsUIScale, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = 1}):Play()
+end
+
+local function closeSettings()
+	local tween = TweenService:Create(SettingsUIScale, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {Scale = 0})
+	tween:Play()
+	tween.Completed:Wait()
+	SettingsFrame.Visible = false
+end
+
+-- Speed Customizer
 local SpeedCustomizer = {
 	Enabled = false,
 	Speed = Config.Speed,
@@ -242,114 +315,6 @@ local function setupSpeedCharacter(char)
 	SpeedCustomizer.hum = char:FindFirstChildOfClass("Humanoid")
 end
 
-local function createSpeedInput(y, labelText, defaultValue)
-	local label = Instance.new("TextLabel")
-	label.Size = UDim2.new(1, 0, 0, 16)
-	label.Position = UDim2.new(0, 15, 0, y)
-	label.BackgroundTransparency = 1
-	label.Text = labelText
-	label.TextColor3 = Color3.fromRGB(0, 140, 255)
-	label.TextSize = isMobile and 10 or 12
-	label.Font = Enum.Font.GothamBold
-	label.TextXAlignment = Enum.TextXAlignment.Left
-	label.Parent = SettingsFrame
-	
-	local box = Instance.new("TextBox")
-	box.Size = UDim2.new(1, -30, 0, 28)
-	box.Position = UDim2.new(0, 15, 0, y + 18)
-	box.BackgroundColor3 = Color3.fromRGB(20, 25, 35)
-	box.Text = tostring(defaultValue)
-	box.TextColor3 = Color3.fromRGB(255, 255, 255)
-	box.Font = Enum.Font.Gotham
-	box.TextSize = isMobile and 12 or 14
-	box.Parent = SettingsFrame
-	Instance.new("UICorner", box).CornerRadius = UDim.new(0, 6)
-	
-	local boxStroke = Instance.new("UIStroke", box)
-	boxStroke.Color = Color3.fromRGB(0, 140, 255)
-	boxStroke.Transparency = 0.6
-	boxStroke.Thickness = 1.5
-	
-	return box, label
-end
-
-local speedBox, speedLabel = createSpeedInput(45, "🚀 Walk Speed", SpeedCustomizer.Speed)
-local stealBox, stealLabel = createSpeedInput(100, "👻 Steal Speed", SpeedCustomizer.StealSpeed)
-local jumpBox, jumpLabel = createSpeedInput(155, "⬆️ Jump Power", SpeedCustomizer.Jump)
-
-for _, data in ipairs({
-	{speedBox, "Speed", speedLabel},
-	{stealBox, "Steal", stealLabel},
-	{jumpBox, "Jump", jumpLabel}
-}) do
-	data[1].FocusLost:Connect(function()
-		local val = tonumber(data[1].Text)
-		if val and val > 0 then
-			val = math.clamp(val, 1, 250)
-			if data[2] == "Speed" then
-				SpeedCustomizer.Speed = val
-				Config.Speed = val
-			elseif data[2] == "Steal" then
-				SpeedCustomizer.StealSpeed = val
-				Config.StealSpeed = val
-			elseif data[2] == "Jump" then
-				SpeedCustomizer.Jump = val
-				Config.Jump = val
-			end
-			data[1].Text = tostring(val)
-			saveConfig(Config)
-		else
-			if data[2] == "Speed" then data[1].Text = tostring(SpeedCustomizer.Speed)
-			elseif data[2] == "Steal" then data[1].Text = tostring(SpeedCustomizer.StealSpeed)
-			elseif data[2] == "Jump" then data[1].Text = tostring(SpeedCustomizer.Jump)
-			end
-		end
-	end)
-end
-
-local autoStealRange = Config.AutoStealRange or 50
-local autoStealRangeBox = nil
-
-local rangeLabel = Instance.new("TextLabel")
-rangeLabel.Size = UDim2.new(1, 0, 0, 16)
-rangeLabel.Position = UDim2.new(0, 15, 0, 210)
-rangeLabel.BackgroundTransparency = 1
-rangeLabel.Text = "🎯 Steal Range"
-rangeLabel.TextColor3 = Color3.fromRGB(0, 140, 255)
-rangeLabel.TextSize = isMobile and 10 or 12
-rangeLabel.Font = Enum.Font.GothamBold
-rangeLabel.TextXAlignment = Enum.TextXAlignment.Left
-rangeLabel.Parent = SettingsFrame
-
-autoStealRangeBox = Instance.new("TextBox")
-autoStealRangeBox.Size = UDim2.new(1, -30, 0, 28)
-autoStealRangeBox.Position = UDim2.new(0, 15, 0, 228)
-autoStealRangeBox.BackgroundColor3 = Color3.fromRGB(20, 25, 35)
-autoStealRangeBox.Text = tostring(autoStealRange)
-autoStealRangeBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-autoStealRangeBox.Font = Enum.Font.Gotham
-autoStealRangeBox.TextSize = isMobile and 12 or 14
-autoStealRangeBox.Parent = SettingsFrame
-Instance.new("UICorner", autoStealRangeBox).CornerRadius = UDim.new(0, 6)
-
-local rangeStroke = Instance.new("UIStroke", autoStealRangeBox)
-rangeStroke.Color = Color3.fromRGB(0, 140, 255)
-rangeStroke.Transparency = 0.6
-rangeStroke.Thickness = 1.5
-
-autoStealRangeBox.FocusLost:Connect(function()
-	local val = tonumber(autoStealRangeBox.Text)
-	if val and val > 0 then
-		val = math.clamp(val, 5, 200)
-		autoStealRange = val
-		Config.AutoStealRange = val
-		autoStealRangeBox.Text = tostring(val)
-		saveConfig(Config)
-	else
-		autoStealRangeBox.Text = tostring(autoStealRange)
-	end
-end)
-
 local function enableSpeed()
 	if SpeedCustomizer.Enabled then return end
 	SpeedCustomizer.Enabled = true
@@ -359,6 +324,10 @@ local function enableSpeed()
 	
 	SpeedCustomizer.HeartbeatConn = RunService.Heartbeat:Connect(function()
 		if not SpeedCustomizer.Enabled then return end
+		
+		SpeedCustomizer.Speed = Config.Speed
+		SpeedCustomizer.StealSpeed = Config.StealSpeed
+		SpeedCustomizer.Jump = Config.Jump
 		
 		local c, h, hrp = SpeedCustomizer.character, SpeedCustomizer.hum, SpeedCustomizer.hrp
 		if not (c and h and hrp) then return end
@@ -404,65 +373,382 @@ local function disableSpeed()
 	end
 end
 
-local speedToggleBtn = Instance.new("TextButton")
-speedToggleBtn.Size = UDim2.new(1, -30, 0, 38)
-speedToggleBtn.Position = UDim2.new(0, 15, 0, 280)
-speedToggleBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-speedToggleBtn.TextColor3 = Color3.new(1, 1, 1)
-speedToggleBtn.Text = "SPEED OFF"
-speedToggleBtn.Font = Enum.Font.GothamBold
-speedToggleBtn.TextSize = isMobile and 12 or 14
-speedToggleBtn.Parent = SettingsFrame
-Instance.new("UICorner", speedToggleBtn).CornerRadius = UDim.new(0, 8)
+-- Infinite Jump
+local InfiniteJump = { Enabled = false, JumpConnection = nil }
 
-speedToggleBtn.MouseButton1Click:Connect(function()
-	if SpeedCustomizer.Enabled then
-		disableSpeed()
-		speedToggleBtn.Text = "SPEED OFF"
-		speedToggleBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-	else
-		enableSpeed()
-		speedToggleBtn.Text = "SPEED ON"
-		speedToggleBtn.BackgroundColor3 = Color3.fromRGB(0, 140, 255)
+local function enableInfJump()
+	if InfiniteJump.Enabled then return end
+	InfiniteJump.Enabled = true
+	Config.InfiniteJumpEnabled = true
+	saveConfig(Config)
+	
+	if InfiniteJump.JumpConnection then
+		InfiniteJump.JumpConnection:Disconnect()
+	end
+	
+	InfiniteJump.JumpConnection = UserInputService.JumpRequest:Connect(function()
+		local char = player.Character
+		if char and InfiniteJump.Enabled then
+			local hrp = char:FindFirstChild("HumanoidRootPart")
+			local hum = char:FindFirstChildOfClass("Humanoid")
+			if hrp and hum then
+				hrp.Velocity = Vector3.new(hrp.Velocity.X, 50, hrp.Velocity.Z)
+			end
+		end
+	end)
+end
+
+local function disableInfJump()
+	InfiniteJump.Enabled = false
+	Config.InfiniteJumpEnabled = false
+	saveConfig(Config)
+	if InfiniteJump.JumpConnection then
+		InfiniteJump.JumpConnection:Disconnect()
+		InfiniteJump.JumpConnection = nil
+	end
+end
+
+-- Auto Bat
+local AutoBat = { Enabled = false, Connection = nil }
+
+local function getWeapon()
+	return player.Backpack:FindFirstChild("Bat") or (player.Character and player.Character:FindFirstChild("Bat"))
+end
+
+local function enableAutoBat()
+	if AutoBat.Enabled then return end
+	AutoBat.Enabled = true
+	Config.AutoBatEnabled = true
+	saveConfig(Config)
+	AutoBat.Connection = RunService.Heartbeat:Connect(function()
+		if not AutoBat.Enabled then return end
+		local char = player.Character
+		local bat = getWeapon()
+		if bat and char and char:FindFirstChild("Humanoid") then
+			if bat.Parent ~= char then
+				char.Humanoid:EquipTool(bat)
+			end
+			bat:Activate()
+		end
+	end)
+end
+
+local function disableAutoBat()
+	AutoBat.Enabled = false
+	Config.AutoBatEnabled = false
+	saveConfig(Config)
+	if AutoBat.Connection then
+		AutoBat.Connection:Disconnect()
+		AutoBat.Connection = nil
+	end
+end
+
+-- Xray Base
+local XrayBase = { Enabled = false, OriginalTransparency = {}, Connections = {} }
+
+local function isPlayerBase(obj)
+	if not (obj:IsA("BasePart") or obj:IsA("MeshPart") or obj:IsA("UnionOperation")) then return false end
+	local n = obj.Name:lower()
+	local p = obj.Parent and obj.Parent.Name:lower() or ""
+	for _, keyword in ipairs({"base", "claim"}) do
+		if n:find(keyword) or p:find(keyword) then return true end
+	end
+	return false
+end
+
+local function enableXrayBase()
+	if XrayBase.Enabled then return end
+	XrayBase.Enabled = true
+	Config.XrayBaseEnabled = true
+	saveConfig(Config)
+	
+	for _, conn in pairs(XrayBase.Connections) do conn:Disconnect() end
+	XrayBase.Connections = {}
+	XrayBase.OriginalTransparency = {}
+	
+	task.wait(0.1)
+	
+	for _, obj in ipairs(Workspace:GetDescendants()) do
+		if isPlayerBase(obj) then
+			XrayBase.OriginalTransparency[obj] = obj.LocalTransparencyModifier
+			obj.LocalTransparencyModifier = 0.8
+		end
+	end
+	
+	XrayBase.Connections.descendantAdded = Workspace.DescendantAdded:Connect(function(obj)
+		if XrayBase.Enabled and isPlayerBase(obj) and not XrayBase.OriginalTransparency[obj] then
+			XrayBase.OriginalTransparency[obj] = obj.LocalTransparencyModifier
+			obj.LocalTransparencyModifier = 0.8
+		end
+	end)
+end
+
+local function disableXrayBase()
+	if not XrayBase.Enabled then return end
+	XrayBase.Enabled = false
+	Config.XrayBaseEnabled = false
+	saveConfig(Config)
+	for _, conn in pairs(XrayBase.Connections) do conn:Disconnect() end
+	XrayBase.Connections = {}
+	for obj, original in pairs(XrayBase.OriginalTransparency) do
+		if obj and obj.Parent then obj.LocalTransparencyModifier = original end
+	end
+	XrayBase.OriginalTransparency = {}
+end
+
+-- No Animation
+local NoAnim = { Enabled = false, CharacterConnections = {} }
+
+local function disableAnims(character)
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if not humanoid then return end
+	for _, track in pairs(humanoid:GetPlayingAnimationTracks()) do
+		track:Stop()
+	end
+	if NoAnim.CharacterConnections[character] then
+		NoAnim.CharacterConnections[character]:Disconnect()
+	end
+	NoAnim.CharacterConnections[character] = humanoid.AnimationPlayed:Connect(function(track)
+		if NoAnim.Enabled then
+			track:Stop()
+		end
+	end)
+end
+
+local function enableNoAnim()
+	if NoAnim.Enabled then return end
+	NoAnim.Enabled = true
+	Config.NoAnimEnabled = true
+	saveConfig(Config)
+	if player.Character then disableAnims(player.Character) end
+	if NoAnim.CharacterConnections.characterAdded then
+		NoAnim.CharacterConnections.characterAdded:Disconnect()
+	end
+	NoAnim.CharacterConnections.characterAdded = player.CharacterAdded:Connect(function(char)
+		task.wait(0.1)
+		if NoAnim.Enabled then
+			disableAnims(char)
+		end
+	end)
+end
+
+local function disableNoAnim()
+	if not NoAnim.Enabled then return end
+	NoAnim.Enabled = false
+	Config.NoAnimEnabled = false
+	saveConfig(Config)
+	if NoAnim.CharacterConnections.characterAdded then
+		NoAnim.CharacterConnections.characterAdded:Disconnect()
+		NoAnim.CharacterConnections.characterAdded = nil
+	end
+	for character, conn in pairs(NoAnim.CharacterConnections) do
+		if character ~= "characterAdded" and conn then
+			conn:Disconnect()
+			NoAnim.CharacterConnections[character] = nil
+		end
+	end
+end
+
+-- Melee Aimbot
+local MeleeAimbot = { Enabled = false, Connection = nil, Attach = nil, Align = nil, Circle = nil }
+
+local function enableMeleeAimbot()
+	if MeleeAimbot.Enabled then return end
+	MeleeAimbot.Enabled = true
+	Config.MeleeAimbotEnabled = true
+	saveConfig(Config)
+	local char = player.Character or player.CharacterAdded:Wait()
+	local hrp = char:WaitForChild("HumanoidRootPart")
+	
+	MeleeAimbot.Attach = Instance.new("Attachment", hrp)
+	MeleeAimbot.Align = Instance.new("AlignOrientation", hrp)
+	MeleeAimbot.Align.Attachment0 = MeleeAimbot.Attach
+	MeleeAimbot.Align.Mode = Enum.OrientationAlignmentMode.OneAttachment
+	MeleeAimbot.Align.RigidityEnabled = true
+	
+	MeleeAimbot.Circle = Instance.new("Part")
+	MeleeAimbot.Circle.Shape = "Cylinder"
+	MeleeAimbot.Circle.Material = "Neon"
+	MeleeAimbot.Circle.Size = Vector3.new(0.05, 14.5, 14.5)
+	MeleeAimbot.Circle.Color = Color3.new(1, 0, 0)
+	MeleeAimbot.Circle.CanCollide = false
+	MeleeAimbot.Circle.Massless = true
+	MeleeAimbot.Circle.Parent = Workspace
+	
+	local weld = Instance.new("Weld")
+	weld.Part0 = hrp
+	weld.Part1 = MeleeAimbot.Circle
+	weld.C0 = CFrame.new(0, -1, 0) * CFrame.Angles(0, 0, math.rad(90))
+	weld.Parent = MeleeAimbot.Circle
+	
+	MeleeAimbot.Connection = RunService.RenderStepped:Connect(function()
+		if not MeleeAimbot.Enabled or not player.Character then return end
+		
+		local target, dmin = nil, 7.25
+		for _, p in ipairs(Players:GetPlayers()) do
+			if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+				local d = (p.Character.HumanoidRootPart.Position - hrp.Position).Magnitude
+				if d <= dmin then
+					target = p.Character.HumanoidRootPart
+					dmin = d
+				end
+			end
+		end
+		
+		if target then
+			player.Character.Humanoid.AutoRotate = false
+			MeleeAimbot.Align.Enabled = true
+			MeleeAimbot.Align.CFrame = CFrame.lookAt(hrp.Position, Vector3.new(target.Position.X, hrp.Position.Y, target.Position.Z))
+			local bat = player.Character:FindFirstChild("Bat")
+			if bat then bat:Activate() end
+		else
+			MeleeAimbot.Align.Enabled = false
+			if player.Character and player.Character:FindFirstChild("Humanoid") then
+				player.Character.Humanoid.AutoRotate = true
+			end
+		end
+	end)
+end
+
+local function disableMeleeAimbot()
+	MeleeAimbot.Enabled = false
+	Config.MeleeAimbotEnabled = false
+	saveConfig(Config)
+	if MeleeAimbot.Connection then MeleeAimbot.Connection:Disconnect() end
+	if MeleeAimbot.Circle then MeleeAimbot.Circle:Destroy() end
+	if MeleeAimbot.Align then MeleeAimbot.Align:Destroy() end
+	if MeleeAimbot.Attach then MeleeAimbot.Attach:Destroy() end
+	if player.Character and player.Character:FindFirstChild("Humanoid") then
+		player.Character.Humanoid.AutoRotate = true
+	end
+end
+
+-- Anti Ragdoll
+local AntiRagdoll = {
+	Enabled = false,
+	connection = nil,
+	keysPressed = {W=false,A=false,S=false,D=false,Space=false},
+	lastSafePos = nil,
+	lastSafeTime = 0
+}
+
+local function isBadState(state)
+	return state == Enum.HumanoidStateType.Ragdoll
+		or state == Enum.HumanoidStateType.Physics
+		or state == Enum.HumanoidStateType.FallingDown
+		or state == Enum.HumanoidStateType.PlatformStanding
+end
+
+local function startAntiRagdollSystem()
+	if AntiRagdoll.connection then return end
+
+	AntiRagdoll.connection = RunService.Heartbeat:Connect(function()
+		if not AntiRagdoll.Enabled then return end
+
+		local char = player.Character
+		if not char then return end
+
+		local humanoid = char:FindFirstChildOfClass("Humanoid")
+		local root = char:FindFirstChild("HumanoidRootPart")
+		if not humanoid or not root then return end
+
+		local state = humanoid:GetState()
+		local vel = root.AssemblyLinearVelocity
+
+		if humanoid.FloorMaterial ~= Enum.Material.Air
+			and not isBadState(state)
+			and vel.Magnitude < 25
+			and tick() - AntiRagdoll.lastSafeTime > 0.3 then
+			AntiRagdoll.lastSafePos = root.Position
+			AntiRagdoll.lastSafeTime = tick()
+		end
+
+		if isBadState(state) then
+			humanoid.PlatformStand = false
+			humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+			task.wait(0.1)
+
+			for _, m in char:GetDescendants() do
+				if m:IsA("Motor6D") and not m.Enabled then
+					m.Enabled = true
+				end
+			end
+
+			if AntiRagdoll.lastSafePos then
+				root.CFrame = CFrame.new(AntiRagdoll.lastSafePos)
+				root.AssemblyLinearVelocity = Vector3.new(0, 5, 0)
+			end
+		end
+
+		humanoid.PlatformStand = false
+		humanoid.Sit = false
+
+		local move = Vector3.new()
+		if AntiRagdoll.keysPressed.W then move += Vector3.new(0,0,-1) end
+		if AntiRagdoll.keysPressed.S then move += Vector3.new(0,0,1) end
+		if AntiRagdoll.keysPressed.A then move += Vector3.new(-1,0,0) end
+		if AntiRagdoll.keysPressed.D then move += Vector3.new(1,0,0) end
+
+		if move.Magnitude > 0 then
+			humanoid:Move(move.Unit, true)
+		end
+
+		humanoid.Jump = AntiRagdoll.keysPressed.Space
+	end)
+end
+
+local function stopAntiRagdollSystem()
+	if AntiRagdoll.connection then
+		AntiRagdoll.connection:Disconnect()
+		AntiRagdoll.connection = nil
+	end
+end
+
+local function enableAntiRagdoll()
+	if AntiRagdoll.Enabled then return end
+	AntiRagdoll.Enabled = true
+	Config.AntiRagdollEnabled = true
+	saveConfig(Config)
+	startAntiRagdollSystem()
+end
+
+local function disableAntiRagdoll()
+	if not AntiRagdoll.Enabled then return end
+	AntiRagdoll.Enabled = false
+	Config.AntiRagdollEnabled = false
+	saveConfig(Config)
+	stopAntiRagdollSystem()
+end
+
+UserInputService.InputBegan:Connect(function(input,gp)
+	if gp then return end
+	local kc = input.KeyCode
+	if kc == Enum.KeyCode.W then AntiRagdoll.keysPressed.W = true
+	elseif kc == Enum.KeyCode.A then AntiRagdoll.keysPressed.A = true
+	elseif kc == Enum.KeyCode.S then AntiRagdoll.keysPressed.S = true
+	elseif kc == Enum.KeyCode.D then AntiRagdoll.keysPressed.D = true
+	elseif kc == Enum.KeyCode.Space then AntiRagdoll.keysPressed.Space = true
 	end
 end)
 
-local settingsOpened = false
-GearButton.MouseButton1Click:Connect(function()
-	TweenService:Create(GearButton, TweenInfo.new(0.5, Enum.EasingStyle.Linear), {Rotation = GearButton.Rotation + 360}):Play()
-	settingsOpened = not settingsOpened
-	if settingsOpened then
-		openSettingsGui()
-	else
-		closeSettingsGui()
+UserInputService.InputEnded:Connect(function(input)
+	local kc = input.KeyCode
+	if kc == Enum.KeyCode.W then AntiRagdoll.keysPressed.W = false
+	elseif kc == Enum.KeyCode.A then AntiRagdoll.keysPressed.A = false
+	elseif kc == Enum.KeyCode.S then AntiRagdoll.keysPressed.S = false
+	elseif kc == Enum.KeyCode.D then AntiRagdoll.keysPressed.D = false
+	elseif kc == Enum.KeyCode.Space then AntiRagdoll.keysPressed.Space = false
 	end
 end)
 
-local Container = Instance.new("Frame")
-Container.Size = UDim2.new(1, -20, 1, -70)
-Container.Position = UDim2.new(0, 10, 0, 60)
-Container.BackgroundTransparency = 1
-Container.Parent = MainFrame
-
-local ScrollFrame = Instance.new("ScrollingFrame")
-ScrollFrame.Size = UDim2.new(1, 0, 1, 0)
-ScrollFrame.BackgroundTransparency = 1
-ScrollFrame.ScrollBarThickness = 3
-ScrollFrame.ScrollBarImageColor3 = Color3.fromRGB(0, 140, 255)
-ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 1)
-ScrollFrame.Parent = Container
-
-local GridLayout = Instance.new("UIGridLayout")
-GridLayout.Parent = ScrollFrame
-GridLayout.CellSize = isMobile and UDim2.new(0.33, 0, 0, 45) or UDim2.new(0.33, 0, 0, 50)
-GridLayout.CellPadding = UDim2.new(0.05, 0, 0.05, 0)
-GridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-
-ScrollFrame.ChildAdded:Connect(function()
-	local size = GridLayout.AbsoluteContentSize
-	ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, size.Y)
+player.CharacterAdded:Connect(function()
+	task.wait(0.6)
+	if AntiRagdoll.Enabled then
+		startAntiRagdollSystem()
+	end
 end)
 
+-- Tween System
 local FAST_SPEED = 58
 local SLOW_SPEED = 29
 local ARRIVE_THRESHOLD = 1
@@ -692,368 +978,7 @@ local function tweenEsquerdo()
 	TweenState.EsquerdoEnabled = false
 end
 
-local AntiRagdoll = {
-	Enabled = false,
-	connection = nil,
-	keysPressed = {W=false,A=false,S=false,D=false,Space=false},
-	lastSafePos = nil,
-	lastSafeTime = 0
-}
-
-local function isBadState(state)
-	return state == Enum.HumanoidStateType.Ragdoll
-		or state == Enum.HumanoidStateType.Physics
-		or state == Enum.HumanoidStateType.FallingDown
-		or state == Enum.HumanoidStateType.PlatformStanding
-end
-
-local function startAntiRagdollSystem()
-	if AntiRagdoll.connection then return end
-
-	AntiRagdoll.connection = RunService.Heartbeat:Connect(function()
-		if not AntiRagdoll.Enabled then return end
-
-		local char = player.Character
-		if not char then return end
-
-		local humanoid = char:FindFirstChildOfClass("Humanoid")
-		local root = char:FindFirstChild("HumanoidRootPart")
-		if not humanoid or not root then return end
-
-		local state = humanoid:GetState()
-		local vel = root.AssemblyLinearVelocity
-
-		if humanoid.FloorMaterial ~= Enum.Material.Air
-			and not isBadState(state)
-			and vel.Magnitude < 25
-			and tick() - AntiRagdoll.lastSafeTime > 0.3 then
-			AntiRagdoll.lastSafePos = root.Position
-			AntiRagdoll.lastSafeTime = tick()
-		end
-
-		if isBadState(state) then
-			humanoid.PlatformStand = false
-			humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
-			task.wait(0.1)
-
-			for _, m in char:GetDescendants() do
-				if m:IsA("Motor6D") and not m.Enabled then
-					m.Enabled = true
-				end
-			end
-
-			if AntiRagdoll.lastSafePos then
-				root.CFrame = CFrame.new(AntiRagdoll.lastSafePos)
-				root.AssemblyLinearVelocity = Vector3.new(0, 5, 0)
-			end
-		end
-
-		humanoid.PlatformStand = false
-		humanoid.Sit = false
-
-		local move = Vector3.new()
-		if AntiRagdoll.keysPressed.W then move += Vector3.new(0,0,-1) end
-		if AntiRagdoll.keysPressed.S then move += Vector3.new(0,0,1) end
-		if AntiRagdoll.keysPressed.A then move += Vector3.new(-1,0,0) end
-		if AntiRagdoll.keysPressed.D then move += Vector3.new(1,0,0) end
-
-		if move.Magnitude > 0 then
-			humanoid:Move(move.Unit, true)
-		end
-
-		humanoid.Jump = AntiRagdoll.keysPressed.Space
-	end)
-end
-
-local function stopAntiRagdollSystem()
-	if AntiRagdoll.connection then
-		AntiRagdoll.connection:Disconnect()
-		AntiRagdoll.connection = nil
-	end
-end
-
-local function enableAntiRagdoll()
-	if AntiRagdoll.Enabled then return end
-	AntiRagdoll.Enabled = true
-	Config.AntiRagdollEnabled = true
-	saveConfig(Config)
-	startAntiRagdollSystem()
-end
-
-local function disableAntiRagdoll()
-	if not AntiRagdoll.Enabled then return end
-	AntiRagdoll.Enabled = false
-	Config.AntiRagdollEnabled = false
-	saveConfig(Config)
-	stopAntiRagdollSystem()
-end
-
-UserInputService.InputBegan:Connect(function(input,gp)
-	if gp then return end
-	local kc = input.KeyCode
-	if kc == Enum.KeyCode.W then AntiRagdoll.keysPressed.W = true
-	elseif kc == Enum.KeyCode.A then AntiRagdoll.keysPressed.A = true
-	elseif kc == Enum.KeyCode.S then AntiRagdoll.keysPressed.S = true
-	elseif kc == Enum.KeyCode.D then AntiRagdoll.keysPressed.D = true
-	elseif kc == Enum.KeyCode.Space then AntiRagdoll.keysPressed.Space = true
-	end
-end)
-
-UserInputService.InputEnded:Connect(function(input)
-	local kc = input.KeyCode
-	if kc == Enum.KeyCode.W then AntiRagdoll.keysPressed.W = false
-	elseif kc == Enum.KeyCode.A then AntiRagdoll.keysPressed.A = false
-	elseif kc == Enum.KeyCode.S then AntiRagdoll.keysPressed.S = false
-	elseif kc == Enum.KeyCode.D then AntiRagdoll.keysPressed.D = false
-	elseif kc == Enum.KeyCode.Space then AntiRagdoll.keysPressed.Space = false
-	end
-end)
-
-player.CharacterAdded:Connect(function()
-	task.wait(0.6)
-	if AntiRagdoll.Enabled then
-		startAntiRagdollSystem()
-	end
-end)
-
-local InfiniteJump = { Enabled = false, JumpConnection = nil }
-local function enableInfJump()
-	if InfiniteJump.Enabled then return end
-	InfiniteJump.Enabled = true
-	Config.InfiniteJumpEnabled = true
-	saveConfig(Config)
-	
-	if InfiniteJump.JumpConnection then
-		InfiniteJump.JumpConnection:Disconnect()
-	end
-	
-	InfiniteJump.JumpConnection = UserInputService.JumpRequest:Connect(function()
-		local char = player.Character
-		if char and InfiniteJump.Enabled then
-			local hrp = char:FindFirstChild("HumanoidRootPart")
-			local hum = char:FindFirstChildOfClass("Humanoid")
-			if hrp and hum then
-				hrp.Velocity = Vector3.new(hrp.Velocity.X, 50, hrp.Velocity.Z)
-			end
-		end
-	end)
-end
-
-local function disableInfJump()
-	InfiniteJump.Enabled = false
-	Config.InfiniteJumpEnabled = false
-	saveConfig(Config)
-	if InfiniteJump.JumpConnection then
-		InfiniteJump.JumpConnection:Disconnect()
-		InfiniteJump.JumpConnection = nil
-	end
-end
-
-local AutoBat = { Enabled = false, Connection = nil }
-local function getWeapon()
-	return player.Backpack:FindFirstChild("Bat") or (player.Character and player.Character:FindFirstChild("Bat"))
-end
-
-local function enableAutoBat()
-	if AutoBat.Enabled then return end
-	AutoBat.Enabled = true
-	Config.AutoBatEnabled = true
-	saveConfig(Config)
-	AutoBat.Connection = RunService.Heartbeat:Connect(function()
-		if not AutoBat.Enabled then return end
-		local char = player.Character
-		local bat = getWeapon()
-		if bat and char and char:FindFirstChild("Humanoid") then
-			if bat.Parent ~= char then
-				char.Humanoid:EquipTool(bat)
-			end
-			bat:Activate()
-		end
-	end)
-end
-
-local function disableAutoBat()
-	AutoBat.Enabled = false
-	Config.AutoBatEnabled = false
-	saveConfig(Config)
-	if AutoBat.Connection then
-		AutoBat.Connection:Disconnect()
-		AutoBat.Connection = nil
-	end
-end
-
-local XrayBase = { Enabled = false, OriginalTransparency = {}, Connections = {} }
-local function isPlayerBase(obj)
-	if not (obj:IsA("BasePart") or obj:IsA("MeshPart") or obj:IsA("UnionOperation")) then return false end
-	local n = obj.Name:lower()
-	local p = obj.Parent and obj.Parent.Name:lower() or ""
-	for _, keyword in ipairs({"base", "claim"}) do
-		if n:find(keyword) or p:find(keyword) then return true end
-	end
-	return false
-end
-
-local function enableXrayBase()
-	if XrayBase.Enabled then return end
-	XrayBase.Enabled = true
-	Config.XrayBaseEnabled = true
-	saveConfig(Config)
-	
-	for _, conn in pairs(XrayBase.Connections) do conn:Disconnect() end
-	XrayBase.Connections = {}
-	XrayBase.OriginalTransparency = {}
-	
-	task.wait(0.1)
-	
-	for _, obj in ipairs(Workspace:GetDescendants()) do
-		if isPlayerBase(obj) then
-			XrayBase.OriginalTransparency[obj] = obj.LocalTransparencyModifier
-			obj.LocalTransparencyModifier = 0.8
-		end
-	end
-	
-	XrayBase.Connections.descendantAdded = Workspace.DescendantAdded:Connect(function(obj)
-		if XrayBase.Enabled and isPlayerBase(obj) and not XrayBase.OriginalTransparency[obj] then
-			XrayBase.OriginalTransparency[obj] = obj.LocalTransparencyModifier
-			obj.LocalTransparencyModifier = 0.8
-		end
-	end)
-end
-
-local function disableXrayBase()
-	if not XrayBase.Enabled then return end
-	XrayBase.Enabled = false
-	Config.XrayBaseEnabled = false
-	saveConfig(Config)
-	for _, conn in pairs(XrayBase.Connections) do conn:Disconnect() end
-	XrayBase.Connections = {}
-	for obj, original in pairs(XrayBase.OriginalTransparency) do
-		if obj and obj.Parent then obj.LocalTransparencyModifier = original end
-	end
-	XrayBase.OriginalTransparency = {}
-end
-
-local NoAnim = { Enabled = false, CharacterConnections = {} }
-local function disableAnims(character)
-	local humanoid = character:FindFirstChildOfClass("Humanoid")
-	if not humanoid then return end
-	for _, track in pairs(humanoid:GetPlayingAnimationTracks()) do
-		track:Stop()
-	end
-	if NoAnim.CharacterConnections[character] then
-		NoAnim.CharacterConnections[character]:Disconnect()
-	end
-	NoAnim.CharacterConnections[character] = humanoid.AnimationPlayed:Connect(function(track)
-		if NoAnim.Enabled then
-			track:Stop()
-		end
-	end)
-end
-
-local function enableNoAnim()
-	if NoAnim.Enabled then return end
-	NoAnim.Enabled = true
-	Config.NoAnimEnabled = true
-	saveConfig(Config)
-	if player.Character then disableAnims(player.Character) end
-	if NoAnim.CharacterConnections.characterAdded then
-		NoAnim.CharacterConnections.characterAdded:Disconnect()
-	end
-	NoAnim.CharacterConnections.characterAdded = player.CharacterAdded:Connect(function(char)
-		task.wait(0.1)
-		if NoAnim.Enabled then
-			disableAnims(char)
-		end
-	end)
-end
-
-local function disableNoAnim()
-	if not NoAnim.Enabled then return end
-	NoAnim.Enabled = false
-	Config.NoAnimEnabled = false
-	saveConfig(Config)
-	if NoAnim.CharacterConnections.characterAdded then
-		NoAnim.CharacterConnections.characterAdded:Disconnect()
-		NoAnim.CharacterConnections.characterAdded = nil
-	end
-	for character, conn in pairs(NoAnim.CharacterConnections) do
-		if character ~= "characterAdded" and conn then
-			conn:Disconnect()
-			NoAnim.CharacterConnections[character] = nil
-		end
-	end
-end
-
-local MeleeAimbot = { Enabled = false, Connection = nil, Attach = nil, Align = nil, Circle = nil }
-local function enableMeleeAimbot()
-	if MeleeAimbot.Enabled then return end
-	MeleeAimbot.Enabled = true
-	Config.MeleeAimbotEnabled = true
-	saveConfig(Config)
-	local char = player.Character or player.CharacterAdded:Wait()
-	local hrp = char:WaitForChild("HumanoidRootPart")
-	
-	MeleeAimbot.Attach = Instance.new("Attachment", hrp)
-	MeleeAimbot.Align = Instance.new("AlignOrientation", hrp)
-	MeleeAimbot.Align.Attachment0 = MeleeAimbot.Attach
-	MeleeAimbot.Align.Mode = Enum.OrientationAlignmentMode.OneAttachment
-	MeleeAimbot.Align.RigidityEnabled = true
-	
-	MeleeAimbot.Circle = Instance.new("Part")
-	MeleeAimbot.Circle.Shape = "Cylinder"
-	MeleeAimbot.Circle.Material = "Neon"
-	MeleeAimbot.Circle.Size = Vector3.new(0.05, 14.5, 14.5)
-	MeleeAimbot.Circle.Color = Color3.new(1, 0, 0)
-	MeleeAimbot.Circle.CanCollide = false
-	MeleeAimbot.Circle.Massless = true
-	MeleeAimbot.Circle.Parent = Workspace
-	
-	local weld = Instance.new("Weld")
-	weld.Part0 = hrp
-	weld.Part1 = MeleeAimbot.Circle
-	weld.C0 = CFrame.new(0, -1, 0) * CFrame.Angles(0, 0, math.rad(90))
-	weld.Parent = MeleeAimbot.Circle
-	
-	MeleeAimbot.Connection = RunService.RenderStepped:Connect(function()
-		if not MeleeAimbot.Enabled or not player.Character then return end
-		
-		local target, dmin = nil, 7.25
-		for _, p in ipairs(Players:GetPlayers()) do
-			if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-				local d = (p.Character.HumanoidRootPart.Position - hrp.Position).Magnitude
-				if d <= dmin then
-					target = p.Character.HumanoidRootPart
-					dmin = d
-				end
-			end
-		end
-		
-		if target then
-			player.Character.Humanoid.AutoRotate = false
-			MeleeAimbot.Align.Enabled = true
-			MeleeAimbot.Align.CFrame = CFrame.lookAt(hrp.Position, Vector3.new(target.Position.X, hrp.Position.Y, target.Position.Z))
-			local bat = player.Character:FindFirstChild("Bat")
-			if bat then bat:Activate() end
-		else
-			MeleeAimbot.Align.Enabled = false
-			player.Character.Humanoid.AutoRotate = true
-		end
-	end)
-end
-
-local function disableMeleeAimbot()
-	MeleeAimbot.Enabled = false
-	Config.MeleeAimbotEnabled = false
-	saveConfig(Config)
-	if MeleeAimbot.Connection then MeleeAimbot.Connection:Disconnect() end
-	if MeleeAimbot.Circle then MeleeAimbot.Circle:Destroy() end
-	if MeleeAimbot.Align then MeleeAimbot.Align:Destroy() end
-	if MeleeAimbot.Attach then MeleeAimbot.Attach:Destroy() end
-	if player.Character and player.Character:FindFirstChild("Humanoid") then
-		player.Character.Humanoid.AutoRotate = true
-	end
-end
-
+-- Auto Steal
 local AutoSteal = { Enabled = false }
 local AnimalsData = nil
 pcall(function()
@@ -1186,7 +1111,7 @@ local function shouldSteal(animalData)
 	local hrp = getHRP()
 	if not hrp then return false end
 	local currentDistance = (hrp.Position - animalData.worldPosition).Magnitude
-	return currentDistance <= autoStealRange
+	return currentDistance <= Config.AutoStealRange
 end
 
 local function buildStealCallbacks(prompt)
@@ -1332,32 +1257,34 @@ end)
 
 initializeScanner()
 
+-- Criar Toggles
 local function createToggle(text, enableFunc, disableFunc)
 	local Holder = Instance.new("Frame")
 	Holder.BackgroundTransparency = 1
 	Holder.Size = UDim2.new(1, 0, 1, 0)
 	
 	local Label = Instance.new("TextLabel")
-	Label.Size = UDim2.new(1, -10, 0.5, 0)
-	Label.Position = UDim2.new(0, 5, 0, 5)
+	Label.Size = UDim2.new(1, -10, 0.6, 0)
+	Label.Position = UDim2.new(0, 5, 0, 2)
 	Label.BackgroundTransparency = 1
 	Label.Text = text
 	Label.Font = Enum.Font.GothamBold
-	Label.TextSize = isMobile and 10 or 12
+	Label.TextSize = 9
 	Label.TextColor3 = Color3.fromRGB(230, 230, 230)
 	Label.TextXAlignment = Enum.TextXAlignment.Center
+	Label.TextScaled = true
 	Label.Parent = Holder
 	
 	local Toggle = Instance.new("Frame")
-	Toggle.Size = UDim2.new(0, 40, 0, 18)
-	Toggle.Position = UDim2.new(0.5, -20, 1, -22)
+	Toggle.Size = UDim2.new(0, 30, 0, 14)
+	Toggle.Position = UDim2.new(0.5, -15, 1, -18)
 	Toggle.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 	Toggle.Parent = Holder
 	Instance.new("UICorner", Toggle).CornerRadius = UDim.new(1, 0)
 	
 	local Circle = Instance.new("Frame")
-	Circle.Size = UDim2.new(0, 14, 0, 14)
-	Circle.Position = UDim2.new(0, 2, 0.5, -7)
+	Circle.Size = UDim2.new(0, 10, 0, 10)
+	Circle.Position = UDim2.new(0, 2, 0.5, -5)
 	Circle.BackgroundColor3 = Color3.new(1, 1, 1)
 	Circle.Parent = Toggle
 	Instance.new("UICorner", Circle).CornerRadius = UDim.new(1, 0)
@@ -1367,10 +1294,10 @@ local function createToggle(text, enableFunc, disableFunc)
 	local function animate(state)
 		if state then
 			TweenService:Create(Toggle, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(0, 140, 255)}):Play()
-			TweenService:Create(Circle, TweenInfo.new(0.2), {Position = UDim2.new(1, -16, 0.5, -7)}):Play()
+			TweenService:Create(Circle, TweenInfo.new(0.2), {Position = UDim2.new(1, -12, 0.5, -5)}):Play()
 		else
 			TweenService:Create(Toggle, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(60, 60, 60)}):Play()
-			TweenService:Create(Circle, TweenInfo.new(0.2), {Position = UDim2.new(0, 2, 0.5, -7)}):Play()
+			TweenService:Create(Circle, TweenInfo.new(0.2), {Position = UDim2.new(0, 2, 0.5, -5)}):Play()
 		end
 	end
 	
@@ -1386,29 +1313,56 @@ local function createToggle(text, enableFunc, disableFunc)
 		end
 	end)
 	
+	Holder.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			enabled = not enabled
+			animate(enabled)
+			if enabled then
+				enableFunc()
+			else
+				disableFunc()
+			end
+		end
+	end)
+	
 	return Holder
 end
 
-createToggle("INFINITE\nJUMP", enableInfJump, disableInfJump).Parent = ScrollFrame
-createToggle("AUTO\nBAT", enableAutoBat, disableAutoBat).Parent = ScrollFrame
-createToggle("XRAY\nBASE", enableXrayBase, disableXrayBase).Parent = ScrollFrame
-createToggle("NO\nANIM", enableNoAnim, disableNoAnim).Parent = ScrollFrame
-createToggle("MELEE\nAIMBOT", enableMeleeAimbot, disableMeleeAimbot).Parent = ScrollFrame
-createToggle("TWEEN\nDIREITO", tweenDireito, function() TweenState.DireitoEnabled = false; stopSpeed() end).Parent = ScrollFrame
-createToggle("TWEEN\nESQUERDO", tweenEsquerdo, function() TweenState.EsquerdoEnabled = false; stopSpeed() end).Parent = ScrollFrame
-createToggle("POS\n3-4", function() TweenState.usePosition3And4 = true end, function() TweenState.usePosition3And4 = false end).Parent = ScrollFrame
-createToggle("ANTI\nRAGDOLL", enableAntiRagdoll, disableAntiRagdoll).Parent = ScrollFrame
-createToggle("AUTO\nSTEAL", function() AutoSteal.Enabled = true; Config.AutoStealEnabled = true; saveConfig(Config) end, function() AutoSteal.Enabled = false; Config.AutoStealEnabled = false; saveConfig(Config) end).Parent = ScrollFrame
+createToggle("SPEED", enableSpeed, disableSpeed).Parent = ScrollFrame
+createToggle("INF JUMP", enableInfJump, disableInfJump).Parent = ScrollFrame
+createToggle("AUTO BAT", enableAutoBat, disableAutoBat).Parent = ScrollFrame
+createToggle("XRAY BASE", enableXrayBase, disableXrayBase).Parent = ScrollFrame
+createToggle("NO ANIM", enableNoAnim, disableNoAnim).Parent = ScrollFrame
+createToggle("MELEE AIM", enableMeleeAimbot, disableMeleeAimbot).Parent = ScrollFrame
+createToggle("TWEEN DIR", tweenDireito, function() TweenState.DireitoEnabled = false; stopSpeed() end).Parent = ScrollFrame
+createToggle("TWEEN ESQ", tweenEsquerdo, function() TweenState.EsquerdoEnabled = false; stopSpeed() end).Parent = ScrollFrame
+createToggle("POS 3-4", function() TweenState.usePosition3And4 = true end, function() TweenState.usePosition3And4 = false end).Parent = ScrollFrame
+createToggle("ANTI RAG", enableAntiRagdoll, disableAntiRagdoll).Parent = ScrollFrame
+createToggle("AUTO STEAL", function() AutoSteal.Enabled = true; Config.AutoStealEnabled = true; saveConfig(Config) end, function() AutoSteal.Enabled = false; Config.AutoStealEnabled = false; saveConfig(Config) end).Parent = ScrollFrame
 
+-- Gear Button
+local settingsOpened = false
+GearButton.MouseButton1Click:Connect(function()
+	TweenService:Create(GearButton, TweenInfo.new(0.5, Enum.EasingStyle.Linear), {Rotation = GearButton.Rotation + 360}):Play()
+	settingsOpened = not settingsOpened
+	if settingsOpened then
+		openSettings()
+	else
+		closeSettings()
+	end
+end)
+
+-- Arrastar GUI Principal
 local dragging = false
 local dragStart, startPos
 
 MainFrame.InputBegan:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-		dragging = true
-		dragStart = input.Position
-		startPos = MainFrame.Position
-		TweenService:Create(UIScale, TweenInfo.new(0.15), {Scale = 0.97}):Play()
+		if input.Position.Y < MainFrame.AbsolutePosition.Y + 35 then
+			dragging = true
+			dragStart = input.Position
+			startPos = MainFrame.Position
+		end
 	end
 end)
 
@@ -1427,19 +1381,20 @@ end)
 UserInputService.InputEnded:Connect(function(input)
 	if dragging then
 		dragging = false
-		TweenService:Create(UIScale, TweenInfo.new(0.2, Enum.EasingStyle.Back), {Scale = 1}):Play()
 	end
 end)
 
+-- Arrastar Settings
 local settingsDragging = false
 local settingsDragStart, settingsStartPos
 
 SettingsFrame.InputBegan:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-		settingsDragging = true
-		settingsDragStart = input.Position
-		settingsStartPos = SettingsFrame.Position
-		TweenService:Create(SettingsUIScale, TweenInfo.new(0.15), {Scale = 0.97}):Play()
+		if input.Position.Y < SettingsFrame.AbsolutePosition.Y + 35 then
+			settingsDragging = true
+			settingsDragStart = input.Position
+			settingsStartPos = SettingsFrame.Position
+		end
 	end
 end)
 
@@ -1458,17 +1413,17 @@ end)
 UserInputService.InputEnded:Connect(function(input)
 	if settingsDragging then
 		settingsDragging = false
-		TweenService:Create(SettingsUIScale, TweenInfo.new(0.2, Enum.EasingStyle.Back), {Scale = 1}):Play()
 	end
 end)
 
+-- Bolinha de Abertura
 local Bubble = Instance.new("Frame")
-Bubble.Size = isMobile and UDim2.new(0, 50, 0, 50) or UDim2.new(0, 55, 0, 55)
-Bubble.Position = UDim2.new(0, 20, 0, 20)
+Bubble.Size = UDim2.new(0, 45, 0, 45)
+Bubble.Position = UDim2.new(0, 15, 0, 15)
 Bubble.BackgroundColor3 = Color3.fromRGB(8, 20, 50)
 Bubble.Parent = ScreenGui
 Bubble.Active = true
-Bubble.ClipsDescendants = true
+Bubble.BorderSizePixel = 0
 
 Instance.new("UICorner", Bubble).CornerRadius = UDim.new(1, 0)
 
@@ -1481,12 +1436,11 @@ BubbleLabel.Size = UDim2.new(1, 0, 1, 0)
 BubbleLabel.BackgroundTransparency = 1
 BubbleLabel.Text = "W"
 BubbleLabel.Font = Enum.Font.GothamBold
-BubbleLabel.TextSize = isMobile and 18 or 24
+BubbleLabel.TextSize = 20
 BubbleLabel.TextColor3 = Color3.fromRGB(0, 140, 255)
 BubbleLabel.Parent = Bubble
 
 local BubbleScale = Instance.new("UIScale", Bubble)
-
 local bubbleDragging = false
 local bubbleStart, bubblePos
 local opened = false
@@ -1528,9 +1482,8 @@ UserInputService.InputEnded:Connect(function(input)
 	end
 end)
 
-print("✅ WAVE DUELS MOBILE - 100% COMPLETO E OTIMIZADO!")
-print("📱 GUI Otimizada para Mobile")
-print("💾 Sistema de Salvamento de Configurações")
-print("🎯 Clique no botão 'SALVAR CONFIG' para persistir as mudanças")
-print("🎮 Clique na bolinha W para abrir/fechar!")
-print("⚡ Todas as configurações são salvas localmente!")
+print("✅ WAVE DUELS MOBILE - 100% FUNCIONAL!")
+print("📱 GUI Pequena e Otimizada para Mobile")
+print("💾 Botão 'SALVAR CONFIG' para persistência")
+print("🎮 Clique na bolinha W para abrir!")
+print("⚡ Todas as 11 funcionalidades ativas!")
