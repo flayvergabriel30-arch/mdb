@@ -6,6 +6,7 @@ local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local player = Players.LocalPlayer
+local isMobile = UserInputService:GetLastInputType() == Enum.UserInputType.Touch
 
 if player.PlayerGui:FindFirstChild("StoryGUI") then
 	player.PlayerGui:FindFirstChild("StoryGUI"):Destroy()
@@ -25,6 +26,7 @@ local SaveSystem = {
 		MeleeAimbotEnabled = false,
 		AntiRagdollEnabled = false,
 		AutoStealEnabled = false,
+		GUISize = isMobile and "small" or "normal",
 	}
 }
 
@@ -53,9 +55,15 @@ local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "StoryGUI"
 ScreenGui.Parent = player.PlayerGui
 ScreenGui.ResetOnSpawn = false
+ScreenGui.SafeAreaCompatible = true
 
 local IsStealing = false
 local StealProgress = 0
+
+-- Ajustar tamanho da GUI baseado no dispositivo
+local guiScale = isMobile and 0.7 or 1
+local mainFrameSize = isMobile and UDim2.new(0, 250, 0, 380) or UDim2.new(0, 350, 0, 500)
+local mainFramePos = isMobile and UDim2.new(0.5, -125, 0.5, -190) or UDim2.new(0.5, -175, 0.5, -250)
 
 local progressBarBg = Instance.new("Frame")
 progressBarBg.Name = "ProgressBarBg"
@@ -84,8 +92,8 @@ progressLabel.TextSize = 10
 progressLabel.Parent = progressBarFill
 
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 350, 0, 500)
-MainFrame.Position = UDim2.new(0.5, -175, 0.5, -250)
+MainFrame.Size = mainFrameSize
+MainFrame.Position = mainFramePos
 MainFrame.BackgroundColor3 = Color3.fromRGB(8, 20, 50)
 MainFrame.BackgroundTransparency = 0.1
 MainFrame.Parent = ScreenGui
@@ -119,7 +127,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 45)
 Title.BackgroundTransparency = 1
 Title.Text = "WAVE DUELS"
-Title.TextSize = 22
+Title.TextSize = isMobile and 16 or 22
 Title.Font = Enum.Font.GothamBold
 Title.TextColor3 = Color3.new(1, 1, 1)
 Title.Parent = MainFrame
@@ -146,8 +154,8 @@ GearButton.TextColor3 = Color3.new(1, 1, 1)
 GearButton.Parent = MainFrame
 
 local SettingsFrame = Instance.new("Frame")
-SettingsFrame.Size = UDim2.new(0, 350, 0, 520)
-SettingsFrame.Position = UDim2.new(0.5, 200, 0.5, -260)
+SettingsFrame.Size = isMobile and UDim2.new(0, 250, 0, 400) or UDim2.new(0, 350, 0, 520)
+SettingsFrame.Position = isMobile and UDim2.new(0.5, 130, 0.5, -200) or UDim2.new(0.5, 200, 0.5, -260)
 SettingsFrame.BackgroundColor3 = Color3.fromRGB(8, 20, 50)
 SettingsFrame.BackgroundTransparency = 0.1
 SettingsFrame.Parent = ScreenGui
@@ -178,10 +186,10 @@ local function closeSettingsGui()
 end
 
 local SettingsTitle = Instance.new("TextLabel")
-SettingsTitle.Size = UDim2.new(1, 0, 0, 45)
+SettingsTitle.Size = UDim2.new(1, 0, 0, 40)
 SettingsTitle.BackgroundTransparency = 1
-SettingsTitle.Text = "⚡ SPEED CONFIG"
-SettingsTitle.TextSize = 22
+SettingsTitle.Text = "⚡ SPEED"
+SettingsTitle.TextSize = isMobile and 14 or 22
 SettingsTitle.Font = Enum.Font.GothamBold
 SettingsTitle.TextColor3 = Color3.new(1, 1, 1)
 SettingsTitle.Parent = SettingsFrame
@@ -196,6 +204,25 @@ local SettingsUnderlineStroke = Instance.new("UIStroke", SettingsUnderline)
 SettingsUnderlineStroke.Color = Color3.fromRGB(0, 140, 255)
 SettingsUnderlineStroke.Transparency = 0.5
 SettingsUnderlineStroke.Thickness = 1
+
+-- BOTÃO SALVAR CONFIGURAÇÃO
+local SaveButton = Instance.new("TextButton")
+SaveButton.Size = UDim2.new(1, -30, 0, 35)
+SaveButton.Position = UDim2.new(0, 15, 1, -50)
+SaveButton.BackgroundColor3 = Color3.fromRGB(0, 140, 255)
+SaveButton.TextColor3 = Color3.new(1, 1, 1)
+SaveButton.Text = "💾 SALVAR CONFIG"
+SaveButton.Font = Enum.Font.GothamBold
+SaveButton.TextSize = isMobile and 11 or 14
+SaveButton.Parent = SettingsFrame
+Instance.new("UICorner", SaveButton).CornerRadius = UDim.new(0, 8)
+
+SaveButton.MouseButton1Click:Connect(function()
+	saveConfig(Config)
+	SaveButton.Text = "✅ SALVO!"
+	task.wait(1.5)
+	SaveButton.Text = "💾 SALVAR CONFIG"
+end)
 
 local SpeedCustomizer = {
 	Enabled = false,
@@ -217,24 +244,24 @@ end
 
 local function createSpeedInput(y, labelText, defaultValue)
 	local label = Instance.new("TextLabel")
-	label.Size = UDim2.new(1, 0, 0, 20)
+	label.Size = UDim2.new(1, 0, 0, 16)
 	label.Position = UDim2.new(0, 15, 0, y)
 	label.BackgroundTransparency = 1
 	label.Text = labelText
 	label.TextColor3 = Color3.fromRGB(0, 140, 255)
-	label.TextSize = 12
+	label.TextSize = isMobile and 10 or 12
 	label.Font = Enum.Font.GothamBold
 	label.TextXAlignment = Enum.TextXAlignment.Left
 	label.Parent = SettingsFrame
 	
 	local box = Instance.new("TextBox")
-	box.Size = UDim2.new(1, -30, 0, 35)
-	box.Position = UDim2.new(0, 15, 0, y + 25)
+	box.Size = UDim2.new(1, -30, 0, 28)
+	box.Position = UDim2.new(0, 15, 0, y + 18)
 	box.BackgroundColor3 = Color3.fromRGB(20, 25, 35)
 	box.Text = tostring(defaultValue)
 	box.TextColor3 = Color3.fromRGB(255, 255, 255)
 	box.Font = Enum.Font.Gotham
-	box.TextSize = 14
+	box.TextSize = isMobile and 12 or 14
 	box.Parent = SettingsFrame
 	Instance.new("UICorner", box).CornerRadius = UDim.new(0, 6)
 	
@@ -246,9 +273,9 @@ local function createSpeedInput(y, labelText, defaultValue)
 	return box, label
 end
 
-local speedBox, speedLabel = createSpeedInput(60, "🚀 Walk Speed", SpeedCustomizer.Speed)
-local stealBox, stealLabel = createSpeedInput(130, "👻 Steal Speed", SpeedCustomizer.StealSpeed)
-local jumpBox, jumpLabel = createSpeedInput(200, "⬆️ Jump Power", SpeedCustomizer.Jump)
+local speedBox, speedLabel = createSpeedInput(45, "🚀 Walk Speed", SpeedCustomizer.Speed)
+local stealBox, stealLabel = createSpeedInput(100, "👻 Steal Speed", SpeedCustomizer.StealSpeed)
+local jumpBox, jumpLabel = createSpeedInput(155, "⬆️ Jump Power", SpeedCustomizer.Jump)
 
 for _, data in ipairs({
 	{speedBox, "Speed", speedLabel},
@@ -284,24 +311,24 @@ local autoStealRange = Config.AutoStealRange or 50
 local autoStealRangeBox = nil
 
 local rangeLabel = Instance.new("TextLabel")
-rangeLabel.Size = UDim2.new(1, 0, 0, 20)
-rangeLabel.Position = UDim2.new(0, 15, 0, 270)
+rangeLabel.Size = UDim2.new(1, 0, 0, 16)
+rangeLabel.Position = UDim2.new(0, 15, 0, 210)
 rangeLabel.BackgroundTransparency = 1
 rangeLabel.Text = "🎯 Steal Range"
 rangeLabel.TextColor3 = Color3.fromRGB(0, 140, 255)
-rangeLabel.TextSize = 12
+rangeLabel.TextSize = isMobile and 10 or 12
 rangeLabel.Font = Enum.Font.GothamBold
 rangeLabel.TextXAlignment = Enum.TextXAlignment.Left
 rangeLabel.Parent = SettingsFrame
 
 autoStealRangeBox = Instance.new("TextBox")
-autoStealRangeBox.Size = UDim2.new(1, -30, 0, 35)
-autoStealRangeBox.Position = UDim2.new(0, 15, 0, 295)
+autoStealRangeBox.Size = UDim2.new(1, -30, 0, 28)
+autoStealRangeBox.Position = UDim2.new(0, 15, 0, 228)
 autoStealRangeBox.BackgroundColor3 = Color3.fromRGB(20, 25, 35)
 autoStealRangeBox.Text = tostring(autoStealRange)
 autoStealRangeBox.TextColor3 = Color3.fromRGB(255, 255, 255)
 autoStealRangeBox.Font = Enum.Font.Gotham
-autoStealRangeBox.TextSize = 14
+autoStealRangeBox.TextSize = isMobile and 12 or 14
 autoStealRangeBox.Parent = SettingsFrame
 Instance.new("UICorner", autoStealRangeBox).CornerRadius = UDim.new(0, 6)
 
@@ -378,13 +405,13 @@ local function disableSpeed()
 end
 
 local speedToggleBtn = Instance.new("TextButton")
-speedToggleBtn.Size = UDim2.new(1, -30, 0, 45)
-speedToggleBtn.Position = UDim2.new(0, 15, 0, 350)
+speedToggleBtn.Size = UDim2.new(1, -30, 0, 38)
+speedToggleBtn.Position = UDim2.new(0, 15, 0, 280)
 speedToggleBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 speedToggleBtn.TextColor3 = Color3.new(1, 1, 1)
 speedToggleBtn.Text = "SPEED OFF"
 speedToggleBtn.Font = Enum.Font.GothamBold
-speedToggleBtn.TextSize = 14
+speedToggleBtn.TextSize = isMobile and 12 or 14
 speedToggleBtn.Parent = SettingsFrame
 Instance.new("UICorner", speedToggleBtn).CornerRadius = UDim.new(0, 8)
 
@@ -420,14 +447,14 @@ Container.Parent = MainFrame
 local ScrollFrame = Instance.new("ScrollingFrame")
 ScrollFrame.Size = UDim2.new(1, 0, 1, 0)
 ScrollFrame.BackgroundTransparency = 1
-ScrollFrame.ScrollBarThickness = 4
+ScrollFrame.ScrollBarThickness = 3
 ScrollFrame.ScrollBarImageColor3 = Color3.fromRGB(0, 140, 255)
 ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 1)
 ScrollFrame.Parent = Container
 
 local GridLayout = Instance.new("UIGridLayout")
 GridLayout.Parent = ScrollFrame
-GridLayout.CellSize = UDim2.new(0.33, 0, 0, 50)
+GridLayout.CellSize = isMobile and UDim2.new(0.33, 0, 0, 45) or UDim2.new(0.33, 0, 0, 50)
 GridLayout.CellPadding = UDim2.new(0.05, 0, 0.05, 0)
 GridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
@@ -1316,7 +1343,7 @@ local function createToggle(text, enableFunc, disableFunc)
 	Label.BackgroundTransparency = 1
 	Label.Text = text
 	Label.Font = Enum.Font.GothamBold
-	Label.TextSize = 12
+	Label.TextSize = isMobile and 10 or 12
 	Label.TextColor3 = Color3.fromRGB(230, 230, 230)
 	Label.TextXAlignment = Enum.TextXAlignment.Center
 	Label.Parent = Holder
@@ -1378,6 +1405,7 @@ local dragStart, startPos
 
 MainFrame.InputBegan:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+	Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 		dragging = true
 		dragStart = input.Position
 		startPos = MainFrame.Position
@@ -1436,7 +1464,7 @@ UserInputService.InputEnded:Connect(function(input)
 end)
 
 local Bubble = Instance.new("Frame")
-Bubble.Size = UDim2.new(0, 55, 0, 55)
+Bubble.Size = isMobile and UDim2.new(0, 50, 0, 50) or UDim2.new(0, 55, 0, 55)
 Bubble.Position = UDim2.new(0, 20, 0, 20)
 Bubble.BackgroundColor3 = Color3.fromRGB(8, 20, 50)
 Bubble.Parent = ScreenGui
@@ -1454,7 +1482,7 @@ BubbleLabel.Size = UDim2.new(1, 0, 1, 0)
 BubbleLabel.BackgroundTransparency = 1
 BubbleLabel.Text = "W"
 BubbleLabel.Font = Enum.Font.GothamBold
-BubbleLabel.TextSize = 24
+BubbleLabel.TextSize = isMobile and 18 or 24
 BubbleLabel.TextColor3 = Color3.fromRGB(0, 140, 255)
 BubbleLabel.Parent = Bubble
 
@@ -1501,7 +1529,9 @@ UserInputService.InputEnded:Connect(function(input)
 	end
 end)
 
-print("✅ WAVE DUELS 100% COMPLETO E OTIMIZADO!")
-print("📍 Progress Bar Sincronizada com o Steal Real")
-print("🎯 Auto Steal com Duração de 0.5 segundos")
+print("✅ WAVE DUELS MOBILE - 100% COMPLETO E OTIMIZADO!")
+print("📱 GUI Otimizada para Mobile")
+print("💾 Sistema de Salvamento de Configurações")
+print("🎯 Clique no botão 'SALVAR CONFIG' para persistir as mudanças")
 print("🎮 Clique na bolinha W para abrir/fechar!")
+print("⚡ Todas as configurações são salvas localmente!")
